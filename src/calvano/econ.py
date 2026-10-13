@@ -38,3 +38,24 @@ def nash_prices(a, a0, mu, c):
     assert np.max(np.abs(foc(p))) < 1e-10, "Nash solver did not converge"
     
     return p
+
+def monopoly_prices(a, a0, mu, c):
+    """Returns the prices that maximse join profit (the collusive benchmark).
+    
+    Searches directly over the price vector with Nelder-Mead, using tight
+    tolerances because pi^m enters every profit calculation."""
+
+    c = np.asarray(c, float)
+
+    # SciPy only minimises, so minimise mimus total industry profit
+    obj = lambda p: -profit(p, a, a0, mu, c).sum() 
+
+    # Monopoly prices start above Nash, so start above cost + mu
+    res = minimize(obj, x0=c + 2 * mu, method='Nelder-Mead', 
+                   options = dict(xatol=1e-12, fatol=1e-14, maxiter=20000))
+    assert res.success, f"Monopoly solver failed: {res.message}"
+
+    return res.x
+
+
+    
