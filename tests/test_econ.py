@@ -15,7 +15,7 @@ def pN():
 def pM():
     return monopoly_prices(A, A0, MU, C)
 
-# Demand and Profit (Eq. 5)
+# Demand and profit (Eq. 5)
 
 
 def test_demand_at_nash(pN):
@@ -42,5 +42,21 @@ def test_no_overflow_with_small_mu():
 def test_profit_at_nash(pN):
     # Reference value for the Nash benchmark
     assert np.allclose(profit(pN, A, A0, MU, C), 0.2229, atol=1e-3)
+
+
+# Nash prices
+
+
+def test_nash_prices(pN):
+    # Compare both firms' prices to the papers reported Nash price
+    assert np.allclose(pN, 1.47293, atol=1e-4)
+
+def test_nash_foc_holds(pN):
+    # Check that each firm's markup equals the optimal markup given its share,
+    # so that no firm can gain by deviating. 
+    q = demand(pN, A, A0, MU)
+    assert np.allclose(pN - np.array(C), MU / (1 - q), atol=1e-8)
+
+
 
 
