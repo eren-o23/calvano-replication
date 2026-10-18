@@ -57,6 +57,18 @@ def test_nash_foc_holds(pN):
     q = demand(pN, A, A0, MU)
     assert np.allclose(pN - np.array(C), MU / (1 - q), atol=1e-8)
 
+# Monopoly Prices
 
+def test_monopoly_prices(pM):
+    # Check that the result matches the paper's baseline collusive price
+    assert np.allclose(pM, 1.92498, atol=1e-4)
 
+def test_monopoly_symmetric(pM):
+    # Identical firms must give a symmetric optimum
+    assert abs(pM[0] - pM[1]) < 1e-6
 
+def test_monopoly_beats_nash(pN, pM):
+    # Collusion must give higher prices than Nash
+    assert np.all(pM > pN)
+    assert profit(pM, A, A0, MU, C).sum() > profit(pN, A, A0, MU, C).sum()
+    
