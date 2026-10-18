@@ -40,10 +40,10 @@ def nash_prices(a, a0, mu, c):
     return p
 
 def monopoly_prices(a, a0, mu, c):
-    """Returns the prices that maximse join profit (the collusive benchmark).
+    """Returns the prices that maximise join profit (the collusive benchmark).
     
     Searches directly over the price vector with Nelder-Mead, using tight
-    tolerances because pi^m enters every profit calculation."""
+    tolerances because pi^m enters every profit gain."""
 
     c = np.asarray(c, float)
 
@@ -57,5 +57,15 @@ def monopoly_prices(a, a0, mu, c):
 
     return res.x
 
-
+def price_grid(pN, pM, m, xi):
+    """Return m evenly spaced prices from just below Nash to just above monopoly.
     
+    The range [pN, pM] is extended by xi times its width at each end
+    (section II.B), so agents can price below Nash and above monopoly."""
+
+    # One common grid for all firms; min / max only matters when firms are asymmetric
+    lo, hi = pN.min(), pM.max()
+    return np.linspace(lo - xi * (hi - lo), # Lower end: pN - ξ(pM - pN)
+                       hi + xi * (hi - lo), # Upper end: pM + ξ(pM - pN)
+                       m) # m equally spaced points
+
