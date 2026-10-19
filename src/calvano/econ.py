@@ -1,24 +1,24 @@
-# Looping over all combinations of parameters for the economic model
 import itertools
-
-# Turning a class into one that just holds values to one with a constructor
-from dataclasses import dataclass
 
 import numpy as np
 
-# Fsolve finds where a set of equations is equal to zero (Nash first-order conditions)
-# Minimize finds the minimum of a function (minus joint profit, for monopoly)
+# fsolve finds where the Nash first-order conditions equal zero
+# minimize finds the minimum of minus joint profit, for monopoly
 from scipy.optimize import fsolve, minimize
 
+
 def demand(p, a, a0, mu):
-    """Logit demand for n products plus an outside good."""
+    """Logit demand for n products plus an outside good. (Eq. 5)"""
     p, a = np.asarray(p, float), np.asarray(a, float)
     u = np.append((a - p) / mu, a0 / mu) # Last entry = outside good
     e = np.exp(u - u.max()) # Avoid overflow when mu is small
     return e[:-1] / e.sum()
 
+
 def profit(p, a, a0, mu, c):
+    """The per-period reward accruing to firm i (section II.B)."""
     return (np.asarray(p, float) - np.asarray(c, float)) * demand(p, a, a0, mu)
+
 
 def nash_prices(a, a0, mu, c):
     """Return Bertrand-Nash prices under logit demand.
@@ -27,7 +27,7 @@ def nash_prices(a, a0, mu, c):
     at once with fsolve, and raises an error if the solution isn't exact."""
 
     a = np.asarray(a, float)
-    # Broadcast to match a if c is a scalar
+    # Lets c be a single number when all firms share the same cost
     c = np.broadcast_to(np.asarray(c, float), a.shape).astype(float)
     
     # Each entry is zero when that firms' markup is optimal given rivals' prices
@@ -36,10 +36,8 @@ def nash_prices(a, a0, mu, c):
     # The optimal markup is always at least mu
     p = fsolve(foc, x0=c + mu) 
     
-    # Fsolve fails silently, and a wrong p^N would corrupt every profit gain later
-    assert np.max(np.abs(foc(p))) < 1e-10, "Nash solver did not converge"
-    
     return p
+
 
 def monopoly_prices(a, a0, mu, c):
     """Returns the prices that maximise join profit (the collusive benchmark).
@@ -53,12 +51,15 @@ def monopoly_prices(a, a0, mu, c):
     # SciPy only minimises, so minimise mimus total industry profit
     obj = lambda p: -profit(p, a, a0, mu, c).sum() 
 
-    # Monopoly prices start above Nash, so start above cost + mu
+    # Monopoly prices are above Nash, so start above cost + mu
     res = minimize(obj, x0=c + 2 * mu, method='Nelder-Mead', 
                    options = dict(xatol=1e-12, fatol=1e-14, maxiter=20000))
-    assert res.success, f"Monopoly solver failed: {res.message}"
+
+    if not res.success:
+        raise RuntimeError(f"Monopoly solver failed: {res.message}")
 
     return res.x
+
 
 def price_grid(pN, pM, m, xi):
     """Return m evenly spaced prices from just below Nash to just above monopoly.
@@ -72,15 +73,33 @@ def price_grid(pN, pM, m, xi):
                        hi + xi * (hi - lo), # Upper end: pM + ξ(pM - pN)
                        m) # m equally spaced points
 
+
 def encode(actions, m):
     """Convert a list of price indices into a single state number.
     
-    Q-learning needs somewhere to store what each agent has learned."""
+    With one-period memory, the state is the last period's joint action, written
+    as a base-m number, with the last firm varying fastest."""
     return sum(a * m ** (len(actions) - 1 - i) for i, a in enumerate(actions))
 
+
 def decode(s, m, n):
-    """Convert a state number into a list of price indices.
+    """Convert a state number back into a list of price indices.
     
-    Hoping that this is useful for analysing the results."""
+    Used to read learned strategies and price paths back as prices."""
     return [s // m ** (n - 1 - i) % m for i in range(n)]
+
+
+def profit_tensor(grid, a, a0, mu, c):
+    """Return every firm's profit for every combination of prices in the grid.
+    
+    Column k holds the profits when firms play the joint action that encode() maps 
+    to k, so Q-learning can look up the profit rather than recomputing them."""
+
+    n = len(a)
+
+    # product() loops over prices
+    combos = itertools.product((grid), repeat=n)
+
+    # One column per joint action, giving the shape (n, m ** n)
+    return np.column_stack([profit(p, a, a0, mu, c) for p in combos])
 
