@@ -57,7 +57,9 @@ def test_nash_foc_holds(pN):
     q = demand(pN, A, A0, MU)
     assert np.allclose(pN - np.array(C), MU / (1 - q), atol=1e-8)
 
+
 # Monopoly Prices
+
 
 def test_monopoly_prices(pM):
     # Check that the result matches the paper's baseline collusive price
@@ -71,4 +73,23 @@ def test_monopoly_beats_nash(pN, pM):
     # Collusion must give higher prices than Nash
     assert np.all(pM > pN)
     assert profit(pM, A, A0, MU, C).sum() > profit(pN, A, A0, MU, C).sum()
-    
+
+
+# Price grid
+
+def test_grid_length_and_endpoints(pN, pM):
+    # Exactly m prices, since the action space has m discrete choices
+    grid = price_grid(pN, pM, M, XI)
+    assert len(grid) == M
+    # Lower and upper end of the price grid
+    assert abs(grid[0] - 1.428) < 1e-3 and abs(grid[-1] - 1.970) < 1e-3
+
+def test_grid_evenly_spaced(pN, pM):
+    # The grid is evenly spaced, so the difference between each price is constant
+    grid = price_grid(pN, pM, M, XI)
+    assert np.allclose(np.diff(grid), np.diff(grid)[0])
+
+def test_grid_contains_nash_and_monopoly(pN, pM):
+    # Grid extends beyond both benchmarks, the role of ξ > 0
+    grid = price_grid(pN, pM, M, XI)
+    assert grid[0] < pN.min() and grid[-1] > pM.max()
