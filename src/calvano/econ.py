@@ -26,7 +26,9 @@ def nash_prices(a, a0, mu, c):
     Solves all firms' first order conditions p_i - c_i = mu / (1 - q_i)
     at once with fsolve, and raises an error if the solution isn't exact."""
 
-    c = np.asarray(c, float)
+    a = np.asarray(a, float)
+    # Broadcast to match a if c is a scalar
+    c = np.broadcast_to(np.asarray(c, float), a.shape).astype(float)
     
     # Each entry is zero when that firms' markup is optimal given rivals' prices
     foc = lambda p: p - c - mu / (1 - demand(p, a, a0, mu)) 
@@ -45,7 +47,8 @@ def monopoly_prices(a, a0, mu, c):
     Searches directly over the price vector with Nelder-Mead, using tight
     tolerances because pi^m enters every profit gain."""
 
-    c = np.asarray(c, float)
+    a = np.asarray(a, float)
+    c = np.broadcast_to(np.asarray(c, float), a.shape).astype(float)
 
     # SciPy only minimises, so minimise mimus total industry profit
     obj = lambda p: -profit(p, a, a0, mu, c).sum() 
