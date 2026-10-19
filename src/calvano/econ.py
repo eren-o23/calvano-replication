@@ -1,4 +1,5 @@
 import itertools
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -98,8 +99,19 @@ def profit_tensor(grid, a, a0, mu, c):
     n = len(a)
 
     # product() loops over prices
-    combos = itertools.product((grid), repeat=n)
+    combos = itertools.product(grid, repeat=n)
 
     # One column per joint action, giving the shape (n, m ** n)
     return np.column_stack([profit(p, a, a0, mu, c) for p in combos])
 
+@dataclass(frozen=True)
+class Params:
+    """Economic environment, using the paper's baseline (section II.E)."""
+
+    a: tuple = (2.0, 2.0) # Product qualities, one per firm
+    c: tuple = (1.0, 1.0) # Marginal costs, one per firm
+    a0: float = 0.0 # Outside good
+    mu: float = 0.25 # Differentiation
+    delta: float = 0.95 # Discount factor
+    m: int = 15 # Number of grid prices
+    xi: float = 0.1 # Grid extension beyond Nash and monopoly
