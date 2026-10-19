@@ -69,3 +69,15 @@ def price_grid(pN, pM, m, xi):
                        hi + xi * (hi - lo), # Upper end: pM + ξ(pM - pN)
                        m) # m equally spaced points
 
+def encode(actions, m):
+    """Convert a list of price indices into a single state number.
+    
+    Q-learning needs somewhere to store what each agent has learned."""
+    return sum(a * m ** (len(actions) - 1 - i) for i, a in enumerate(actions))
+
+def decode(s, m, n):
+    """Convert a state number into a list of price indices.
+    
+    Hoping that this is useful for analysing the results."""
+    return [s // m ** (n - 1 - i) % m for i in range(n)]
+
