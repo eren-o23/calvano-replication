@@ -115,3 +115,19 @@ class Params:
     delta: float = 0.95 # Discount factor
     m: int = 15 # Number of grid prices
     xi: float = 0.1 # Grid extension beyond Nash and monopoly
+
+@dataclass(frozen=True)
+class Env:
+    """Everything computed once by Params and shared by every session."""
+
+    params: Params
+    pN: np.ndarray # Nash prices, per firm
+    pM: np.ndarray # Monopoly prices, per firm
+    piN: float # Nash profit, averaged across firms (Eq. 9 uses per-firm average profits)
+    piM: float # Monopoly profit, averaged across firms
+    grid: np.ndarray # The m feasible prices
+    PI: np.ndarray # Profit tensor
+
+    def profit_gain(self, pibar):
+        """Eq. 9: 0 at the Nash profit, 1 at the monopoly profit."""
+        return (pibar - self.piN) / (self.piM - self.piN) 
