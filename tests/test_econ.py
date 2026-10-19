@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from calvano.econ import demand, profit, nash_prices, monopoly_prices, price_grid
+from calvano.econ import (demand, profit, nash_prices, monopoly_prices, price_grid, 
+                          encode, decode, profit_tensor)
 
 # Baseline parameters
 A, A0, MU, C = [2, 2], 0, 0.25, [1, 1]
@@ -14,6 +15,11 @@ def pN():
 @pytest.fixture(scope="module")
 def pM():
     return monopoly_prices(A, A0, MU, C)
+
+@pytest.fixture(scope="module")
+def grid(pN, pM):
+    return price_grid(pN, pM, M, XI)
+
 
 # Demand and profit (Eq. 5)
 
@@ -36,7 +42,7 @@ def test_demand_falls_with_own_price():
 
 def test_no_overflow_with_small_mu():
     # Checks that demand still gives reasonable values when mu is very small
-    q = demand([1.5, 1.6], A, A0, 0.001)
+    q = demand([1.5, 1.6], A, A0, 1e-4)
     assert np.all(np.isfinite(q))
 
 def test_profit_at_nash(pN):
@@ -77,6 +83,7 @@ def test_monopoly_beats_nash(pN, pM):
 
 # Price grid
 
+
 def test_grid_length_and_endpoints(pN, pM):
     # Exactly m prices, since the action space has m discrete choices
     grid = price_grid(pN, pM, M, XI)
@@ -93,3 +100,8 @@ def test_grid_contains_nash_and_monopoly(pN, pM):
     # Grid extends beyond both benchmarks, the role of ξ > 0
     grid = price_grid(pN, pM, M, XI)
     assert grid[0] < pN.min() and grid[-1] > pM.max()
+
+
+# Encoding and decoding
+
+
