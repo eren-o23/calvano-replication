@@ -83,6 +83,13 @@ def encode(actions, m):
     return sum(a * m ** (len(actions) - 1 - i) for i, a in enumerate(actions))
 
 
+def encode_loop(actions, m):
+    """Same result as encode, written as a plain loop so numba can compile it."""
+    joint = 0
+    for a in actions:
+        joint = joint * m + a
+    return joint
+
 def decode(s, m, n):
     """Convert a state number back into a list of price indices.
     
@@ -131,3 +138,16 @@ class Env:
     def profit_gain(self, pibar):
         """Eq. 9: 0 at the Nash profit, 1 at the monopoly profit."""
         return (pibar - self.piN) / (self.piM - self.piN) 
+
+def build_env(p=Params()):
+    """Solves the benchmarks, and builds the grid and profit tensor for Params p."""
+
+    pN = nash_prices(p.a, p.a0, p.mu, p.c)
+    pM = monopoly_prices(p.a, p.a0, p.mu, p.c)
+    grid = price_grid(pN, pM, p.m, p.xi)
+    return Env(params=p, pN=pN, pM=pM,
+               piN=profit(pN, p.a, p.a0, p.mu, p.c).mean(),
+               piM=profit(pN, p.a, p.a0, p.mu, p.c).mean(),
+               grid=grid,
+               PI=profit_tensor(grid, p.a, p.a0, p.mu, p.c))
+
