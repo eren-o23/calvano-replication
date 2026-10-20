@@ -1,8 +1,12 @@
 import numpy as np
+from numba import njit
 
+from calvano.econ import encode_loop
+
+_encode = njit(cache=True)(encode_loop)
 
 def initial_Q(env):
-    """Return every agents starting Q-matrix, shape (n, m**m, m) (Eq. 8).
+    """Return every agents starting Q-matrix, shape (n, m**n, m) (Eq. 8).
     
     Each cell is the profit agent i expects from price a_i if it's rivals
     pick prices uniformly at random, discounted forever. The same for every
@@ -12,7 +16,7 @@ def initial_Q(env):
     p = env.params
     n, m = p.n, p.m
 
-    Q0 = np.empty((n, m**m, m))
+    Q0 = np.empty((n, m**n, m))
     for i in range(n):
         
         # One axis per firm
@@ -27,3 +31,62 @@ def initial_Q(env):
         Q0[i] = own / (1 - p.delta)
 
     return Q0
+
+
+@njit(cache=True)
+def learn(PI, Q, alpha, beta, delta, seed, max_t, conv_window):
+    """Run one session of Q-learning, updating Q in place.
+    
+    alpha and beta are arrays with one entry per agent, so agents can differ 
+    in how fast they learn and explore. Returns (t_end, converged, last_state),
+    where last_state is the joint action of the final period."""
+
+    np.random.seed(seed)
+
+    n, S, m = Q.shape
+
+    # Reference table of each agent's preferred price in every state.
+    strategy = np.empty((n, S), np.int64)
+    for i in range(n):
+        for s in range(S):
+            strategy[i, s] = np.argmax(Q[i, s])
+
+    s = np.random.randint(S) # Initial state drawn at random (Section II.E)
+    a = np.empty(n, np.int64) # Allocated once, reused every period
+    stable = 0 # Period since any agent's strategy changed
+
+    for t in range(max_t):
+
+        # Each agent explores with probability exp(-beta t) (Eq. 7).
+        for i in range(n):
+            if np.random.random() < np.exp(-beta[i] * t):
+                a[i] = np.random.randint(m)
+            else:
+                a[i] = strategy[i, s]
+
+        # The joint action is both the column of rewards and the next state.
+        s_next = _encode(a, m)
+
+        # Each agent updates the cell it just used (Eq. 4).
+        changed = False
+        for i in range(n):
+            target = PI[i, s_next] + delta * Q[i, s_next].max()
+            Q[i, s, a[i]] = (1 - alpha[i]) * Q[i, s, a[i]] + alpha[i] * target
+
+            # Did the price change?
+            best = np.argmax(Q[i, s])
+            if best != strategy[i, s]:
+                strategy[i, s] = best
+                changed = True
+
+        # Has the agent's strategy changed for conv_window periods (Section III.B)
+        if changed:
+            stable = 0
+        else:
+            stable += 1
+            if stable > conv_window:
+                return t + 1, True, s_next
+
+        s = s_next
+
+    return max_t, False, s
