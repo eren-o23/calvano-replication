@@ -90,3 +90,17 @@ def learn(PI, Q, alpha, beta, delta, seed, max_t, conv_window):
         s = s_next
 
     return max_t, False, s
+
+def run_session(env, alpha, beta, delta, seed, max_t=10**9, conv_window=100000):
+    """Run one session from Q0 and return (Q, t_end, converged, last_state)."""
+
+    n = env.params.n
+
+    alpha = np.broadcast_to(np.asarray(alpha, float), (n,)).copy()
+    beta = np.broadcast_to(np.asarray(beta, float), (n,)).copy()
+
+    Q = initial_Q(env)
+    t_end, converged, last_state = learn(env.PI, Q, alpha, beta, env.params.delta,
+                                         seed, max_t, conv_window)
+    return Q, t_end, converged, last_state
+
