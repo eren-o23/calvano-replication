@@ -123,6 +123,11 @@ class Params:
     m: int = 15 # Number of grid prices
     xi: float = 0.1 # Grid extension beyond Nash and monopoly
 
+    @property
+    def n(self):
+        """Number of firms, one per entry in a."""
+        return len(self.a)
+
 @dataclass(frozen=True)
 class Env:
     """Everything computed once by Params and shared by every session."""
@@ -147,7 +152,7 @@ def build_env(p=Params()):
     grid = price_grid(pN, pM, p.m, p.xi)
     return Env(params=p, pN=pN, pM=pM,
                piN=profit(pN, p.a, p.a0, p.mu, p.c).mean(),
-               piM=profit(pN, p.a, p.a0, p.mu, p.c).mean(),
+               piM=profit(pM, p.a, p.a0, p.mu, p.c).mean(),
                grid=grid,
                PI=profit_tensor(grid, p.a, p.a0, p.mu, p.c))
 
