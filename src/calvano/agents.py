@@ -1,5 +1,6 @@
 import numpy as np
 from numba import njit
+from dataclasses import dataclass
 
 from calvano.econ import encode_loop
 
