@@ -104,3 +104,21 @@ def run_session(env, alpha, beta, delta, seed, max_t=10**9, conv_window=100000):
                                          seed, max_t, conv_window)
     return Q, t_end, converged, last_state
 
+@dataclass(frozen=True)
+class Outcome:
+    """What a finished section settled on."""
+
+    cycle: tuple # States in the limit cycle, in the order they're played
+    prices: np.ndarray # Grid prices in each cycle state
+    pibar: float # Average per-firm profit over the cycle
+    gain: float # Profit gain (Eq. 9)
+    strategy: np.ndarray # Greedy price index per agent and state
+
+    @property
+    def length(self):
+        return len(self.cycle)
+
+    @property
+    def symmetric(self):
+        # Every firm charges the same price in every state
+        return bool(np.all(self.prices == self.prices[:, :1]))
