@@ -84,7 +84,7 @@ def learn(PI, Q, alpha, beta, delta, seed, max_t, conv_window):
             stable = 0
         else:
             stable += 1
-            if stable > conv_window:
+            if stable >= conv_window:
                 return t + 1, True, s_next
 
         s = s_next
