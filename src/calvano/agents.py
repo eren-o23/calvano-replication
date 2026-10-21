@@ -2,7 +2,7 @@ import numpy as np
 from numba import njit
 from dataclasses import dataclass
 
-from calvano.econ import encode_loop
+from calvano.econ import encode_loop, decode
 
 _encode = njit(cache=True)(encode_loop)
 
@@ -123,3 +123,21 @@ class Outcome:
     def symmetric(self):
         # Every firm charges the same price in every state
         return bool(np.all(self.prices == self.prices[:, :1]))
+
+def limit_cycle(strategy, s0, m):
+    """Follow the greedy strategies from state s0 until a state repeats.
+    
+    Returns the repeating part only, in the order that its played."""
+
+    n = strategy.shape[0]
+    first_visit = {} # Position in the path where it was first seen
+    path = []
+    s = int(s0)
+    while s not in first_visit:
+        first_visit[s] = len(path)
+        path.append(s)
+        # With no exploration, each agent plays its strategy, and those 
+        # prices are the next state
+        s = int(encode_loop([strategy[i, s] for i in range(n)], m))
+    return path[first_visit[s]:]
+
