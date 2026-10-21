@@ -121,7 +121,7 @@ class Outcome:
 
     @property
     def symmetric(self):
-        # Every firm charges the same price in every state
+        # Every firm charges the same price in every state.
         return bool(np.all(self.prices == self.prices[:, :1]))
 
 def limit_cycle(strategy, s0, m):
@@ -137,7 +137,23 @@ def limit_cycle(strategy, s0, m):
         first_visit[s] = len(path)
         path.append(s)
         # With no exploration, each agent plays its strategy, and those 
-        # prices are the next state
+        # prices are the next state.
         s = int(encode_loop([strategy[i, s] for i in range(n)], m))
     return path[first_visit[s]:]
 
+def session_outcome(env, Q, last_state):
+    """Find the limit cycle a session ended on and its last profit gain."""
+
+    p = env.params
+    strategy = Q.argmax(axis=2)
+
+    # Start from where the session really ended.
+    cycle = limit_cycle(strategy, last_state, p.m)
+
+    prices = env.grid[[decode(s, p.m, p.n) for s in cycle]]
+
+    # Average over the cycle states for per firm profit.
+    pibar = env.PI[:, cycle].mean()
+
+    return Outcome(cycle=tuple(cycle), prices=prices, pibar=pibar,
+                   gain=env.profit_gain(pibar), strategy=strategy)
