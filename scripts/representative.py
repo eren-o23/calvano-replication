@@ -14,8 +14,8 @@ ALPHA, BETA = 0.15, 4e-6
 RESULTS = Path(__file__).resolve().parent.parent / "results"
 
 # Table 1 of the paper, for comparison.
-PAPER = pd.DataFrame(
-    "frequency": {[0.277, 0.366, 0.238, 0.119, 1.0],
+PAPER = pd.DataFrame({
+    "frequency": [0.277, 0.366, 0.238, 0.119, 1.0],
     "mean gain": [0.866, 0.855, 0.846, 0.793, 0.849],
     "sd gain": [0.115, 0.114, 0.104, 0.097, 0.112]},
     index=["1-sym", "1-asym", "2", ">=3", "all"] 
