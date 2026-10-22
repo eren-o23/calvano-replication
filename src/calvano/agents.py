@@ -201,3 +201,37 @@ def true_Q(env, strategy, i):
     # Deviate to a for one period, then follow the strategies.
     return reward + p.delta * W[nxt]
 
+
+def equilibrium_check(env, outcome, tol=1e-9):
+    """Nash play on path and Q-loss, the same as table 1.
+    
+    Nash on path: in every cycle state, both agents learned prices are the best response.
+    Q-loss: the share of the best attainable payoff an agent forfeits by its learned price."""
+
+    S = env.params.m ** env.params.n
+    path = np.array(outcome.cycle)
+
+    # Nash becomes false if either agent fails
+    # Both lists collect each agent's average Q-loss
+    nash, loss_path, loss_all = True, [], []
+
+    # Checks each agent in turn, getting its true Q-matrix against the other's frozen
+    # strategy.
+    for i in range(env.params.n):
+        Q = true_Q(env, outcome.strategy, i)
+        best = Q.max(axis=1)
+
+        # Value of the price the agent learned in each state.
+        played = Q[np.arange(S), outcome.strategy[i]]
+
+        loss = (best - played) / best # Q-loss
+
+        # Keeps nash true if the agent lost essentially nothing in every state.
+        nash &= bool(np.all(loss[path] <= tol))
+
+        loss_path.append(loss[path].mean())
+        loss_all.append(loss.mean())
+
+    return dict(nash=nash, qloss_path=float(np.mean(loss_path)),
+                qloss_all=float(np.mean(loss_all)))
+
