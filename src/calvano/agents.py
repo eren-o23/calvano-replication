@@ -92,7 +92,7 @@ def learn(PI, Q, alpha, beta, delta, seed, max_t, conv_window):
 
     return max_t, False, s
 
-def run_session(env, alpha, beta, delta, seed, max_t=10**9, conv_window=100000):
+def run_session(env, alpha, beta, seed, max_t=10**9, conv_window=100000):
     """Run one session from Q0 and return (Q, t_end, converged, last_state)."""
 
     n = env.params.n
