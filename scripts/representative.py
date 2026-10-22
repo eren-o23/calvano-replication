@@ -60,6 +60,9 @@ def main(n_sessions):
     print("\nThis replication:\n", table1(df).round(3))
     print("\nPaper: (Table 1):\n", PAPER)
 
+    print(f"Converged: {df['converged'].mean():.1%}, "
+          f"mean periods to converge: {df.loc[df['converged'], 't_end'].mean():.0f}")
+
     RESULTS.mkdir(exist_ok=True)
     df.to_csv(RESULTS / "representative.csv", index=False)
     np.savez_compressed(RESULTS / "representative_strategies.npz",
