@@ -7,7 +7,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 
 from calvano.econ import build_env
-from calvano.agents import run_session, session_outcome
+from calvano.agents import run_session, session_outcome, equilibrium_check
 
 # Learning rate and exploration-decay, the papers representative baseline values.
 ALPHA, BETA = 0.15, 4e-6
@@ -17,7 +17,10 @@ RESULTS = Path(__file__).resolve().parent.parent / "results"
 PAPER = pd.DataFrame({
     "frequency": [0.277, 0.366, 0.238, 0.119, 1.0],
     "mean gain": [0.866, 0.855, 0.846, 0.793, 0.849],
-    "sd gain": [0.115, 0.114, 0.104, 0.097, 0.112]},
+    "sd gain": [0.115, 0.114, 0.104, 0.097, 0.112],
+    "nash": [0.686, 0.661, 0.294, 0.025, 0.505],
+    "qloss path": [0.001, 0.001, 0.002, 0.004, 0.002],
+    "qloss all": [0.018, 0.018, 0.018, 0.018, 0.018]},
     index=["1-sym", "1-asym", "2", ">=3", "all"] 
 )
 
@@ -30,21 +33,28 @@ def one_session(env, seed):
     out = session_outcome(env, Q, last_state)
 
     return dict(seed=seed, t_end=t_end, converged=converged, gain=out.gain,
-                length=out.length, symmetric = out.symmetric, strategy=out.strategy)
+                length=out.length, symmetric = out.symmetric, strategy=out.strategy,
+                **equilibrium_check(env, out))
 
 
 def table1(df):
-    """Session shares and profit gain laid out by cycle (like table 1)."""
+    """Session shares and profit gain, and equilibrium play by cycle (like table 1)."""
 
     df = df.assign(type=np.select(
                    [(df["length"] == 1) & df["symmetric"], df["length"] == 1, df["length"] == 2],
                     ["1-sym", "1-asym", "2"], default=">=3"))
-    by_type = df.groupby("type")["gain"].agg(["size", "mean", "std"])
-    by_type.loc["all"] = [len(df), df["gain"].mean(), df["gain"].std()]
-    by_type = by_type.reindex(PAPER.index)
-    return pd.DataFrame({"frequency": by_type["size"] / len(df),
-                        "mean gain": by_type["mean"],
-                        "sd gain": by_type["std"]})
+
+    def stats(g):
+        return pd.Series({"frequency": len(g) / len(df),
+                          "mean gain": g["gain"].mean(),
+                          "sd gain": g["gain"].std(),
+                          "nash": g["nash"].mean(),
+                          "qloss path": g["qloss_path"].mean(),
+                          "qloss all": g["qloss_all"].mean()})
+
+    out = df.groupby("type")[["gain", "nash", "qloss_path", "qloss_all"]].apply(stats)
+    out.loc["all"] = stats(df)
+    return out.reindex(PAPER.index)
 
 
 def main(n_sessions):
