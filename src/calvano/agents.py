@@ -6,6 +6,7 @@ from calvano.econ import encode_loop, decode
 
 _encode = njit(cache=True)(encode_loop)
 
+
 def initial_Q(env):
     """Return every agents starting Q-matrix, shape (n, m**n, m) (Eq. 8).
     
@@ -92,6 +93,7 @@ def learn(PI, Q, alpha, beta, delta, seed, max_t, conv_window):
 
     return max_t, False, s
 
+
 def run_session(env, alpha, beta, seed, max_t=10**9, conv_window=100000):
     """Run one session from Q0 and return (Q, t_end, converged, last_state)."""
 
@@ -104,6 +106,7 @@ def run_session(env, alpha, beta, seed, max_t=10**9, conv_window=100000):
     t_end, converged, last_state = learn(env.PI, Q, alpha, beta, env.params.delta,
                                          seed, max_t, conv_window)
     return Q, t_end, converged, last_state
+
 
 @dataclass(frozen=True)
 class Outcome:
@@ -124,6 +127,7 @@ class Outcome:
         # Every firm charges the same price in every state.
         return bool(np.all(self.prices == self.prices[:, :1]))
 
+
 def limit_cycle(strategy, s0, m):
     """Follow the greedy strategies from state s0 until a state repeats.
     
@@ -141,6 +145,7 @@ def limit_cycle(strategy, s0, m):
         s = int(encode_loop([strategy[i, s] for i in range(n)], m))
     return path[first_visit[s]:]
 
+
 def session_outcome(env, Q, last_state):
     """Find the limit cycle a session ended on and its last profit gain."""
 
@@ -157,3 +162,42 @@ def session_outcome(env, Q, last_state):
 
     return Outcome(cycle=tuple(cycle), prices=prices, pibar=pibar,
                    gain=env.profit_gain(pibar), strategy=strategy)
+
+
+def true_Q(env, strategy, i):
+    """Agent i's true Q-matrix when both agents follow their learned strategies (Section III.D).
+    
+    Q(s, a) is the discounted profit from playing a once in state s, then both agents following
+    their learned strategies forever (Eq. 3)."""
+
+    p = env.params
+
+    # Setting up the states.
+    m, S = p.m, p.m ** p.n
+    states = np.arange(S)
+
+    # Own is every price agent i can try, rival is the other agent's learned price in each state.
+    own, rival = np.arange(m), strategy[1 - i]
+
+    # The core table, nxt[s, a] is the joint action played when agent i picks a in state s and 
+    # the rival plays its strategy.
+    if i == 0:
+        nxt = own[None, :] * m + rival[:, None] # (S, m)
+    else:
+        nxt = rival[:, None] * m + own[None, :]
+
+    # Agent i's profit for every state, price pair.
+    reward = env.PI[i, nxt]
+
+    # Both agents follow their strategies.
+    follow = nxt[states, strategy[i]]
+
+    # W(s) is the value of both agents following their strategies from s.
+    # W = r + delta  * P W, where P moves each state to the next one from the strategies path.
+    P = np.zeros((S, S))
+    P[states, follow] = 1
+    W = np.linalg.solve(np.eye(S) - p.delta * P, reward[states, strategy[i]])
+
+    # Deviate to a for one period, then follow the strategies.
+    return reward + p.delta * W[nxt]
+
